@@ -1,0 +1,90 @@
+import { Quest, InstantDungeonTask } from '../types/system';
+
+export const INITIAL_DAILY_QUESTS: Quest[] = [
+  {
+    id: 'quest-morning-jog',
+    timeSlot: '05:45–06:05',
+    name: 'Morning Jog',
+    duration: '20 min',
+    category: 'KÖRPER',
+    xp: 20,
+    completed: true,
+    isMandatory: true,
+  },
+  {
+    id: 'quest-tagebuch',
+    timeSlot: '06:15–06:40',
+    name: 'Tagebuch Präteritum',
+    category: 'SPRACHE',
+    xp: 25,
+    completed: false,
+    isMandatory: true,
+  },
+  {
+    id: 'quest-shadowing-am',
+    timeSlot: '07:00–08:00',
+    name: 'Shadowing (Commute AM)',
+    category: 'SPRACHE',
+    xp: 15,
+    completed: false,
+    isMandatory: true,
+  },
+  {
+    id: 'quest-kelas-magna',
+    timeSlot: '08:00–12:30',
+    name: 'Kelas Magna',
+    category: 'SPRACHE',
+    xp: 30,
+    completed: true,
+    isMandatory: true,
+  },
+  {
+    id: 'quest-shadowing-pm',
+    timeSlot: '12:30–13:30',
+    name: 'Shadowing (Commute PM)',
+    category: 'SPRACHE',
+    xp: 15,
+    completed: false,
+    isMandatory: true,
+  },
+  {
+    id: 'quest-live-stream',
+    timeSlot: '19:00–23:00',
+    name: 'Live Stream',
+    duration: '4h',
+    category: 'CONTENT',
+    xp: 25,
+    completed: false,
+    isMandatory: true,
+  },
+  {
+    id: 'quest-bonus-chat',
+    timeSlot: '~21:00',
+    name: 'Bonus: Ngomong Jerman ke chat',
+    category: 'CONTENT',
+    xp: 10,
+    completed: false,
+    isMandatory: false,
+  },
+];
+
+export const INITIAL_INSTANT_DUNGEON_TASKS: InstantDungeonTask[] = [
+  {
+    id: 'dungeon-dw-article',
+    name: 'Baca 1 artikel DW (Deutsche Welle)',
+    xp: 10,
+    completed: false,
+  },
+  {
+    id: 'dungeon-video-nosub',
+    name: 'Nonton 1 video tanpa subtitle',
+    xp: 10,
+    completed: false,
+  },
+  {
+    id: 'dungeon-grammar-review',
+    name: 'Review 1 chapter grammar',
+    xp: 10,
+    completed: false,
+  },
+];

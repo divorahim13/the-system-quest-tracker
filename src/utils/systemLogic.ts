@@ -1,4 +1,5 @@
-import { SystemData, TitleItem, Quest } from '../types/system';
+import { SystemData, TitleItem, ExamGates } from '../types/system';
+import { INITIAL_DAILY_QUESTS, INITIAL_INSTANT_DUNGEON_TASKS } from '../config/questConfig';
 
 export const TITLES_LIST: TitleItem[] = [
   {
@@ -57,54 +58,47 @@ export const TITLES_LIST: TitleItem[] = [
   },
 ];
 
-export const DEFAULT_QUESTS: Quest[] = [
-  {
-    id: 'quest-1',
-    name: 'Morning Jog',
-    duration: '20 min',
-    category: 'KÖRPER',
-    xp: 20,
-    completed: true,
-  },
-  {
-    id: 'quest-2',
-    name: 'Tagebuch Präteritum',
-    category: 'SPRACHE',
-    xp: 25,
-    completed: false,
-  },
-  {
-    id: 'quest-3',
-    name: 'German Class',
-    category: 'SPRACHE',
-    xp: 30,
-    completed: false,
-  },
-  {
-    id: 'quest-4',
-    name: 'Live Stream',
-    duration: '4h',
-    category: 'CONTENT',
-    xp: 25,
-    completed: false,
-  },
-];
-
 export const STORAGE_KEY = 'the-system-data';
 
 export function getNextLevelXP(level: number): number {
-  if (level === 12) return 2500;
-  const raw = 500 * Math.pow(1.156, level - 1);
-  return Math.round(raw / 50) * 50;
+  return Math.round(500 * Math.pow(1.15, level - 1));
 }
 
-export function getRankForLevel(level: number): string {
-  if (level <= 5) return 'E-RANK';
-  if (level <= 10) return 'D-RANK';
-  if (level <= 20) return 'C-RANK';
-  if (level <= 35) return 'B-RANK';
-  if (level <= 55) return 'A-RANK';
-  return 'S-RANK';
+export function getRankForLevel(level: number, examGates?: ExamGates): string {
+  let levelRankIdx = 1;
+  if (level <= 10) levelRankIdx = 1;
+  else if (level <= 15) levelRankIdx = 2;
+  else if (level <= 25) levelRankIdx = 3;
+  else if (level <= 40) levelRankIdx = 4;
+  else if (level <= 60) levelRankIdx = 5;
+  else levelRankIdx = 6;
+
+  let gateMaxRankIdx = 6;
+  if (examGates) {
+    if (!examGates.passedB1) gateMaxRankIdx = 2;
+    else if (!examGates.passedB2) gateMaxRankIdx = 4;
+    else if (!examGates.passedC1) gateMaxRankIdx = 5;
+    else gateMaxRankIdx = 6;
+  }
+
+  const finalRankIdx = Math.min(levelRankIdx, gateMaxRankIdx);
+
+  switch (finalRankIdx) {
+    case 1:
+      return 'E-RANK';
+    case 2:
+      return 'D-RANK';
+    case 3:
+      return 'C-RANK';
+    case 4:
+      return 'B-RANK';
+    case 5:
+      return 'A-RANK';
+    case 6:
+      return 'S-RANK';
+    default:
+      return 'E-RANK';
+  }
 }
 
 export function getTodayDateString(): string {
@@ -112,7 +106,13 @@ export function getTodayDateString(): string {
   return now.toISOString().split('T')[0];
 }
 
+export function getCurrentMonthString(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function getDaysRemaining(targetDateStr: string): number {
+  if (!targetDateStr) return 0;
   const target = new Date(targetDateStr);
   const now = new Date();
   target.setHours(0, 0, 0, 0);
@@ -124,34 +124,41 @@ export function getDaysRemaining(targetDateStr: string): number {
 
 export function getInitialData(): SystemData {
   const today = getTodayDateString();
+  const currentMonth = getCurrentMonthString();
+
   const defaultTarget = new Date();
   defaultTarget.setDate(defaultTarget.getDate() + 45);
   const targetDateStr = defaultTarget.toISOString().split('T')[0];
 
-  return {
+  const initialGates: ExamGates = {
+    passedB1: false,
+    passedB2: false,
+    passedC1: false,
+  };
+
+  const initialData: SystemData = {
     playerName: 'DIVO',
     level: 12,
     currentXP: 1240,
-    rank: 'C-RANK',
+    rank: getRankForLevel(12, initialGates),
     streakDays: 14,
     graceTokens: 1,
+    lastGraceRefillMonth: currentMonth,
+    streakProtectedToday: false,
+    totalNewVerbs: 0,
+    examGates: initialGates,
     lastActiveDate: today,
-    quests: DEFAULT_QUESTS,
-    dailyHistory: [
-      { date: '2026-07-14', day: 'SUN', xpEarned: 850 },
-      { date: '2026-07-15', day: 'MON', xpEarned: 1850 },
-      { date: '2026-07-16', day: 'TUE', xpEarned: 1200 },
-      { date: '2026-07-17', day: 'WED', xpEarned: 1600 },
-      { date: '2026-07-18', day: 'THU', xpEarned: 1400 },
-      { date: '2026-07-19', day: 'FRI', xpEarned: 2300 },
-      { date: '2026-07-20', day: 'SAT', xpEarned: 1240 },
-    ],
+    quests: INITIAL_DAILY_QUESTS,
+    instantDungeonTasks: INITIAL_INSTANT_DUNGEON_TASKS,
+    dailyHistory: [],
     unlockedTitles: ['awakened-hunter', 'consistent-hunter', 'perfectionist'],
     bossFight: {
-      examName: 'GOETHE B2 EXAM',
+      examName: 'GOETHE B1 EXAM',
       targetDate: targetDateStr,
     },
   };
+
+  return initialData;
 }
 
 export function loadSystemData(): SystemData {
@@ -164,20 +171,56 @@ export function loadSystemData(): SystemData {
     }
     const parsed: SystemData = JSON.parse(raw);
     const today = getTodayDateString();
+    const currentMonth = getCurrentMonthString();
+
+    if (!parsed.examGates) {
+      parsed.examGates = { passedB1: false, passedB2: false, passedC1: false };
+    }
+    if (parsed.totalNewVerbs === undefined) parsed.totalNewVerbs = 0;
+    if (!parsed.instantDungeonTasks || parsed.instantDungeonTasks.length === 0) {
+      parsed.instantDungeonTasks = INITIAL_INSTANT_DUNGEON_TASKS;
+    }
+    if (!parsed.lastGraceRefillMonth) parsed.lastGraceRefillMonth = currentMonth;
+
+    if (parsed.lastGraceRefillMonth !== currentMonth) {
+      parsed.graceTokens = 1;
+      parsed.lastGraceRefillMonth = currentMonth;
+    }
 
     if (parsed.lastActiveDate !== today) {
-      const allCompleted = parsed.quests.every((q) => q.completed);
-      if (!allCompleted) {
-        if (parsed.graceTokens > 0) {
-          parsed.graceTokens -= 1;
-        } else {
-          parsed.streakDays = 0;
-        }
+      const mandatoryQuests = parsed.quests.filter((q) => q.isMandatory);
+      const allMandatoryCompleted = mandatoryQuests.every((q) => q.completed);
+
+      if (allMandatoryCompleted || parsed.streakProtectedToday) {
+        parsed.streakDays += 1;
+      } else {
+        parsed.streakDays = 0;
       }
-      parsed.quests = parsed.quests.map((q) => ({ ...q, completed: false }));
+
+      parsed.streakProtectedToday = false;
+
+      parsed.quests = parsed.quests.map((q) => ({
+        ...q,
+        completed: q.id === 'quest-kelas-magna',
+      }));
+
+      parsed.instantDungeonTasks = parsed.instantDungeonTasks.map((t) => ({
+        ...t,
+        completed: false,
+      }));
+
       parsed.lastActiveDate = today;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
     }
+
+    if (parsed.totalNewVerbs >= 100 && !parsed.unlockedTitles.includes('polyglot-grinder')) {
+      parsed.unlockedTitles.push('polyglot-grinder');
+    }
+    if (parsed.level >= 20 && !parsed.unlockedTitles.includes('shadow-monarch')) {
+      parsed.unlockedTitles.push('shadow-monarch');
+    }
+
+    parsed.rank = getRankForLevel(parsed.level, parsed.examGates);
 
     return parsed;
   } catch (e) {
