@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, BarChart3, Plus, RotateCcw, Zap, Cloud } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Plus, RefreshCw, Clock, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Quest } from '../types/system';
+import { getCurrentWIBTime, getNextQuestCountdown, WIBTimeInfo } from '../utils/timeUtils';
 
 interface NavbarProps {
-  activeTab: 'dashboard' | 'stats';
-  onTabChange: (tab: 'dashboard' | 'stats') => void;
-  onSaveQuest: (questData: Partial<Quest>, editId?: string) => void;
+  activeTab: 'dashboard' | 'stats' | 'riwayat' | 'manager' | 'radar' | 'settings';
+  onTabChange: (tab: 'dashboard' | 'stats' | 'riwayat' | 'manager' | 'radar' | 'settings') => void;
+  onSaveQuest: (quest: Partial<Quest>, editId?: string) => void;
   editingQuest: Quest | null;
   onCloseEditQuest: () => void;
   onQuickXP: (amount: number) => void;
   onResetData: () => void;
   isCloudSynced?: boolean;
+  quests?: Quest[];
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -23,234 +25,148 @@ export const Navbar: React.FC<NavbarProps> = ({
   onQuickXP,
   onResetData,
   isCloudSynced = true,
+  quests = [],
 }) => {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [timeSlotInput, setTimeSlotInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
-  const [durationInput, setDurationInput] = useState('');
-  const [categoryInput, setCategoryInput] = useState<'KÖRPER' | 'SPRACHE' | 'CONTENT' | 'OTHER'>('SPRACHE');
-  const [xpInput, setXpInput] = useState('25');
-  const [isMandatoryInput, setIsMandatoryInput] = useState(true);
+  const [wibTime, setWibTime] = useState<WIBTimeInfo>(getCurrentWIBTime());
 
   useEffect(() => {
-    if (editingQuest) {
-      setTimeSlotInput(editingQuest.timeSlot || '');
-      setNameInput(editingQuest.name);
-      setDurationInput(editingQuest.duration || '');
-      setCategoryInput(editingQuest.category);
-      setXpInput(String(editingQuest.xp));
-      setIsMandatoryInput(editingQuest.isMandatory);
-      setShowAddModal(true);
-    }
-  }, [editingQuest]);
+    const timer = setInterval(() => {
+      setWibTime(getCurrentWIBTime());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nameInput.trim()) return;
-
-    onSaveQuest(
-      {
-        timeSlot: timeSlotInput.trim() || undefined,
-        name: nameInput.trim(),
-        duration: durationInput.trim() || undefined,
-        category: categoryInput,
-        xp: parseInt(xpInput, 10) || 20,
-        isMandatory: isMandatoryInput,
-      },
-      editingQuest ? editingQuest.id : undefined
-    );
-
-    handleCloseModal();
-  };
-
-  const handleCloseModal = () => {
-    setShowAddModal(false);
-    onCloseEditQuest();
-    setTimeSlotInput('');
-    setNameInput('');
-    setDurationInput('');
-    setCategoryInput('SPRACHE');
-    setXpInput('25');
-    setIsMandatoryInput(true);
-  };
+  const nextQuestInfo = getNextQuestCountdown(quests, wibTime.totalMinutes);
 
   return (
-    <>
-      <header className="sticky top-0 z-40 w-full max-w-md mx-auto mb-4 backdrop-blur-md bg-[#060913]/80 border-b border-[#4FC3F7]/30 py-2.5 px-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 font-hud font-black text-base sm:text-lg text-white tracking-widest uppercase">
-            <span className="text-[#4FC3F7] animate-pulse">❖</span>
-            <span className="glow-text-cyan">THE SYSTEM</span>
-            <span
-              className={clsx(
-                'ml-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex items-center gap-1',
-                isCloudSynced
-                  ? 'border-emerald-500/50 text-emerald-300 bg-emerald-950/40'
-                  : 'border-cyan-500/50 text-cyan-300 bg-cyan-950/40'
-              )}
-              title="Cloud Progress Synced via Supabase"
-            >
-              <Cloud className="w-3 h-3 text-emerald-400 animate-pulse" />
-              <span>CLOUD</span>
-            </span>
+    <header className="w-full mb-4 sm:mb-5 font-hud select-none">
+      <div className="mb-2 p-2 rounded border border-[#4FC3F7]/30 bg-[#0A1428]/90 flex items-center justify-between shadow-[0_0_10px_rgba(79,195,247,0.15)]">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-[#4FC3F7] animate-pulse" />
+          <span className="text-xs sm:text-sm font-bold text-cyan-200 tracking-wider font-mono">
+            {wibTime.formattedTime}
+          </span>
+          <span className="text-[10px] text-gray-400 hidden sm:inline border-l border-gray-800 pl-2">
+            {wibTime.formattedDate}
+          </span>
+        </div>
+
+        {nextQuestInfo ? (
+          <div className="flex items-center gap-1 text-[11px] font-semibold text-[#4FC3F7] bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/60">
+            <Sparkles className="w-3 h-3 text-[#00E5FF] animate-pulse" />
+            <span>Next: <strong className="text-white">{nextQuestInfo.name}</strong> ({nextQuestInfo.countdownText})</span>
           </div>
+        ) : (
+          <span className="text-[10px] text-gray-500 font-mono">Quests Finished</span>
+        )}
+      </div>
 
-          <div className="flex items-center gap-1.5 font-hud">
-            <button
-              onClick={() => onQuickXP(100)}
-              className="px-2 py-1 bg-cyan-950/60 border border-[#4FC3F7]/50 text-[#4FC3F7] rounded text-[11px] font-bold hover:bg-[#4FC3F7]/20 transition-all flex items-center gap-1"
-              title="Add +100 XP Test"
-            >
-              <Zap className="w-3 h-3" /> +100 XP
-            </button>
-
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="p-1.5 bg-[#4FC3F7]/10 border border-[#4FC3F7]/50 text-[#4FC3F7] rounded hover:bg-[#4FC3F7]/20 transition-all"
-              title="Add Custom Quest"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={onResetData}
-              className="p-1.5 bg-slate-900 border border-slate-700 text-gray-400 hover:text-red-400 hover:border-red-500/50 rounded transition-all"
-              title="Reset System Data"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
+      <div className="flex items-center justify-between pb-3 border-b border-[#4FC3F7]/30">
+        <div className="flex items-center gap-2">
+          <div className="relative w-8 h-8 flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#4FC3F7] rounded-sm rotate-45 opacity-20 animate-pulse" />
+            <span className="relative text-[#4FC3F7] font-extrabold text-lg">◇</span>
+          </div>
+          <div>
+            <h1 className="font-extrabold text-lg sm:text-xl tracking-widest text-white uppercase glow-text-cyan">
+              THE SYSTEM
+            </h1>
+            <div className="text-[9px] text-gray-400 -mt-1 tracking-wider uppercase font-semibold">
+              DAILY QUEST TRACKER
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mt-2.5">
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => onTabChange('dashboard')}
-            className={clsx(
-              'py-2 px-3 font-hud font-bold text-xs sm:text-sm tracking-widest uppercase rounded transition-all duration-200 flex items-center justify-center gap-2 border',
-              activeTab === 'dashboard'
-                ? 'bg-[#0A1A33] border-[#4FC3F7] text-white shadow-[0_0_12px_rgba(79,195,247,0.3)]'
-                : 'bg-black/40 border-slate-800 text-gray-400 hover:text-gray-200 hover:border-slate-700'
-            )}
+            onClick={() => onQuickXP(100)}
+            className="flex items-center gap-1 px-2.5 py-1 bg-[#4FC3F7]/15 border border-[#4FC3F7] text-[#4FC3F7] text-xs font-bold rounded hover:bg-[#4FC3F7]/30 transition-all shadow-[0_0_8px_rgba(79,195,247,0.3)]"
           >
-            <LayoutDashboard className="w-4 h-4 text-[#4FC3F7]" />
-            <span>DASHBOARD</span>
+            +100 XP
           </button>
-
           <button
-            onClick={() => onTabChange('stats')}
-            className={clsx(
-              'py-2 px-3 font-hud font-bold text-xs sm:text-sm tracking-widest uppercase rounded transition-all duration-200 flex items-center justify-center gap-2 border',
-              activeTab === 'stats'
-                ? 'bg-[#0A1A33] border-[#4FC3F7] text-white shadow-[0_0_12px_rgba(79,195,247,0.3)]'
-                : 'bg-black/40 border-slate-800 text-gray-400 hover:text-gray-200 hover:border-slate-700'
-            )}
+            onClick={onResetData}
+            className="p-1.5 text-gray-400 hover:text-[#4FC3F7] transition-colors"
+            title="Reset Data to Default Spec"
           >
-            <BarChart3 className="w-4 h-4 text-[#4FC3F7]" />
-            <span>STATS & TITLES</span>
+            <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-      </header>
+      </div>
 
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-xs sm:max-w-sm bg-[#0B1528] border-2 border-[#4FC3F7] p-5 rounded-md shadow-[0_0_30px_rgba(79,195,247,0.4)] font-hud">
-            <h3 className="text-lg font-bold text-[#4FC3F7] tracking-widest uppercase mb-4">
-              {editingQuest ? 'EDIT QUEST' : 'ADD NEW QUEST'}
-            </h3>
+      <div className="grid grid-cols-6 gap-1 mt-3">
+        <button
+          onClick={() => onTabChange('dashboard')}
+          className={clsx(
+            'py-1.5 px-1 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border text-center truncate',
+            activeTab === 'dashboard'
+              ? 'bg-[#4FC3F7]/20 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.3)]'
+              : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+          )}
+        >
+          DASHBOARD
+        </button>
 
-            <form onSubmit={handleFormSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-gray-300 font-semibold mb-1">TIME SLOT (OPTIONAL):</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 07:00–08:00"
-                  value={timeSlotInput}
-                  onChange={(e) => setTimeSlotInput(e.target.value)}
-                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-white focus:outline-none focus:border-[#4FC3F7]"
-                />
-              </div>
+        <button
+          onClick={() => onTabChange('stats')}
+          className={clsx(
+            'py-1.5 px-1 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border text-center truncate',
+            activeTab === 'stats'
+              ? 'bg-[#4FC3F7]/20 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.3)]'
+              : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+          )}
+        >
+          STATS
+        </button>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-1">QUEST NAME:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 50 Vocab Cards"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-white focus:outline-none focus:border-[#4FC3F7]"
-                />
-              </div>
+        <button
+          onClick={() => onTabChange('riwayat')}
+          className={clsx(
+            'py-1.5 px-1 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border text-center truncate',
+            activeTab === 'riwayat'
+              ? 'bg-[#4FC3F7]/20 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.3)]'
+              : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+          )}
+        >
+          RIWAYAT
+        </button>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-1">DURATION (OPTIONAL):</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 30 min"
-                  value={durationInput}
-                  onChange={(e) => setDurationInput(e.target.value)}
-                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-white focus:outline-none focus:border-[#4FC3F7]"
-                />
-              </div>
+        <button
+          onClick={() => onTabChange('manager')}
+          className={clsx(
+            'py-1.5 px-1 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border text-center truncate',
+            activeTab === 'manager'
+              ? 'bg-[#4FC3F7]/20 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.3)]'
+              : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+          )}
+        >
+          MANAGER
+        </button>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-1">CATEGORY:</label>
-                <select
-                  value={categoryInput}
-                  onChange={(e) => setCategoryInput(e.target.value as any)}
-                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-white focus:outline-none focus:border-[#4FC3F7]"
-                >
-                  <option value="SPRACHE">SPRACHE (Language)</option>
-                  <option value="KÖRPER">KÖRPER (Exercise)</option>
-                  <option value="CONTENT">CONTENT (Creation)</option>
-                  <option value="OTHER">OTHER</option>
-                </select>
-              </div>
+        <button
+          onClick={() => onTabChange('radar')}
+          className={clsx(
+            'py-1.5 px-1 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border text-center truncate',
+            activeTab === 'radar'
+              ? 'bg-[#4FC3F7]/20 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.3)]'
+              : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+          )}
+        >
+          RADAR
+        </button>
 
-              <div>
-                <label className="block text-gray-300 font-semibold mb-1">XP REWARD:</label>
-                <input
-                  type="number"
-                  min="5"
-                  max="500"
-                  value={xpInput}
-                  onChange={(e) => setXpInput(e.target.value)}
-                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-[#4FC3F7] font-bold focus:outline-none focus:border-[#4FC3F7]"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="mandatoryCheck"
-                  checked={isMandatoryInput}
-                  onChange={(e) => setIsMandatoryInput(e.target.checked)}
-                  className="w-4 h-4 accent-[#4FC3F7] cursor-pointer"
-                />
-                <label htmlFor="mandatoryCheck" className="text-gray-300 font-semibold cursor-pointer">
-                  Quest Wajib (Block Streak jika terlewat)
-                </label>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-2 bg-[#4FC3F7] text-slate-950 font-bold rounded hover:bg-[#00E5FF] transition-all shadow-[0_0_10px_#4FC3F7]"
-                >
-                  {editingQuest ? 'SIMPAN PERUBAHAN' : 'ADD QUEST'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 bg-slate-800 text-gray-300 font-bold rounded hover:bg-slate-700"
-                >
-                  CANCEL
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </>
+        <button
+          onClick={() => onTabChange('settings')}
+          className={clsx(
+            'py-1.5 px-1 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border text-center truncate',
+            activeTab === 'settings'
+              ? 'bg-[#4FC3F7]/20 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.3)]'
+              : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+          )}
+        >
+          SETTINGS
+        </button>
+      </div>
+    </header>
   );
 };

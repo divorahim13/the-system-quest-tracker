@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SystemData, Quest } from '../types/system';
 import { HudPanel, DiamondDivider } from './HudPanel';
 import { getDaysRemaining } from '../utils/systemLogic';
 import { RadarChart } from './RadarChart';
 import { calculateDualGateRank, calculateLevelFromXP } from '../utils/statLogic';
-import { Flame, Check, Zap, Edit2, Trash2, Edit, ShieldAlert, Sparkles, AlertTriangle } from 'lucide-react';
+import { getCurrentWIBTime, computeQuestStatus, QuestLiveStatus } from '../utils/timeUtils';
+import { Flame, Check, Zap, Edit2, Trash2, Edit, ShieldAlert, Sparkles, AlertTriangle, Clock, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface DashboardProps {
@@ -46,6 +47,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [bossDateInput, setBossDateInput] = useState(data.bossFight.targetDate);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  const [currentWIBMinutes, setCurrentWIBMinutes] = useState<number>(getCurrentWIBTime().totalMinutes);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentWIBMinutes(getCurrentWIBTime().totalMinutes);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const levelInfo = calculateLevelFromXP(data.currentXP || 0);
   const xpPercentage = Math.min(100, Math.max(0, (levelInfo.currentXP / 500) * 100));
   const daysRemaining = getDaysRemaining(data.bossFight.targetDate);
@@ -69,6 +79,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return 'border-red-400/60 text-red-300 bg-red-950/40';
       default:
         return 'border-gray-400/60 text-gray-300 bg-gray-900/40';
+    }
+  };
+
+  const renderStatusBadge = (status: QuestLiveStatus) => {
+    switch (status) {
+      case 'DONE':
+        return (
+          <span className="text-[9px] font-hud font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500 text-emerald-300 uppercase">
+            DONE
+          </span>
+        );
+      case 'ACTIVE_NOW':
+        return (
+          <span className="text-[9px] font-hud font-bold px-1.5 py-0.5 rounded bg-cyan-950/90 border border-[#00E5FF] text-[#00E5FF] uppercase animate-pulse shadow-[0_0_8px_#00E5FF]">
+            ACTIVE NOW
+          </span>
+        );
+      case 'MISSED':
+        return (
+          <span className="text-[9px] font-hud font-bold px-1.5 py-0.5 rounded bg-red-950/90 border border-red-500 text-red-300 uppercase flex items-center gap-1">
+            <AlertCircle className="w-2.5 h-2.5" /> MISSED
+          </span>
+        );
+      case 'UPCOMING':
+      default:
+        return (
+          <span className="text-[9px] font-hud font-bold px-1.5 py-0.5 rounded bg-gray-900/80 border border-gray-700 text-gray-400 uppercase">
+            UPCOMING
+          </span>
+        );
     }
   };
 
@@ -232,128 +272,136 @@ export const Dashboard: React.FC<DashboardProps> = ({
             DAILY QUEST
           </h2>
           <p className="font-hud text-[10px] sm:text-xs text-gray-400 tracking-widest mt-0.5 uppercase">
-            COMPLETE ALL TO MAINTAIN STREAK.
+            LIVE QUEST STATE DRIVEN BY TIME WINDOWS.
           </p>
         </div>
 
         <DiamondDivider count={1} variant="cyan" />
 
         <div className="space-y-2.5">
-          {data.quests.map((quest) => (
-            <div
-              key={quest.id}
-              className={clsx(
-                'group relative flex flex-col p-2.5 sm:p-3 rounded border transition-all duration-200 select-none space-y-2',
-                quest.completed
-                  ? 'bg-[#4FC3F7]/10 border-[#4FC3F7]/60 shadow-[0_0_10px_rgba(79,195,247,0.15)] animate-quest-pulse'
-                  : 'bg-slate-900/40 border-slate-800 hover:border-[#4FC3F7]/40 hover:bg-slate-900/70'
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                  <div
-                    onClick={() => handleQuestClick(quest)}
-                    className={clsx(
-                      'w-6 h-6 rounded-sm border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
-                      quest.completed
-                        ? 'border-[#4FC3F7] bg-[#4FC3F7] text-slate-950 shadow-[0_0_10px_#4FC3F7]'
-                        : 'border-[#4FC3F7]/50 bg-black/40 group-hover:border-[#4FC3F7]'
-                    )}
-                  >
-                    {quest.completed && <Check className="w-4 h-4 stroke-[3]" />}
-                  </div>
+          {data.quests.map((quest) => {
+            const liveStatus = computeQuestStatus(quest.timeSlot, quest.completed, currentWIBMinutes);
 
-                  <div className="flex-1 min-w-0" onClick={() => handleQuestClick(quest)}>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {quest.timeSlot && (
-                        <span className="font-hud text-[10px] sm:text-xs text-[#4FC3F7] font-semibold">
-                          [{quest.timeSlot}]
-                        </span>
+            return (
+              <div
+                key={quest.id}
+                className={clsx(
+                  'group relative flex flex-col p-2.5 sm:p-3 rounded border transition-all duration-200 select-none space-y-2',
+                  liveStatus === 'DONE' && 'bg-[#4FC3F7]/10 border-[#4FC3F7]/60 shadow-[0_0_10px_rgba(79,195,247,0.15)]',
+                  liveStatus === 'ACTIVE_NOW' && 'bg-cyan-950/50 border-[#00E5FF] shadow-[0_0_15px_rgba(0,229,255,0.4)] animate-pulse',
+                  liveStatus === 'MISSED' && 'bg-red-950/30 border-red-600/70',
+                  liveStatus === 'UPCOMING' && 'bg-slate-900/40 border-slate-800 opacity-75'
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                    <div
+                      onClick={() => handleQuestClick(quest)}
+                      className={clsx(
+                        'w-6 h-6 rounded-sm border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
+                        quest.completed
+                          ? 'border-[#4FC3F7] bg-[#4FC3F7] text-slate-950 shadow-[0_0_10px_#4FC3F7]'
+                          : liveStatus === 'MISSED'
+                          ? 'border-red-500 bg-black/40'
+                          : 'border-[#4FC3F7]/50 bg-black/40 group-hover:border-[#4FC3F7]'
                       )}
-                      <span
-                        className={clsx(
-                          'font-hud font-semibold text-sm sm:text-base tracking-wide truncate',
-                          quest.completed ? 'text-gray-300 line-through opacity-80' : 'text-white'
-                        )}
-                      >
-                        {quest.name}
-                      </span>
+                    >
+                      {quest.completed && <Check className="w-4 h-4 stroke-[3]" />}
                     </div>
 
-                    <div className="flex items-center gap-2 mt-1">
-                      <span
-                        className={clsx(
-                          'inline-block text-[9px] sm:text-[10px] font-hud font-bold px-2 py-0.5 border rounded-full uppercase tracking-wider',
-                          getCategoryColor(quest.category)
+                    <div className="flex-1 min-w-0" onClick={() => handleQuestClick(quest)}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {quest.timeSlot && (
+                          <span className="font-hud text-[10px] sm:text-xs text-[#4FC3F7] font-semibold">
+                            [{quest.timeSlot}]
+                          </span>
                         )}
+                        <span
+                          className={clsx(
+                            'font-hud font-semibold text-sm sm:text-base tracking-wide truncate',
+                            quest.completed ? 'text-gray-300 line-through opacity-80' : 'text-white'
+                          )}
+                        >
+                          {quest.name}
+                        </span>
+                        {renderStatusBadge(liveStatus)}
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        <span
+                          className={clsx(
+                            'inline-block text-[9px] sm:text-[10px] font-hud font-bold px-2 py-0.5 border rounded-full uppercase tracking-wider',
+                            getCategoryColor(quest.category)
+                          )}
+                        >
+                          {quest.category}
+                        </span>
+                        {quest.id.includes('morgenroutine') && (
+                          <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
+                            SCH +2, GRA +1
+                          </span>
+                        )}
+                        {quest.id.includes('commute') && (
+                          <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
+                            HOR +2
+                          </span>
+                        )}
+                        {quest.id.includes('aktives-lernen') && (
+                          <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
+                            WOR +2, GRA +1
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="font-hud font-bold text-xs sm:text-sm text-[#4FC3F7] tracking-wider drop-shadow-[0_0_6px_rgba(79,195,247,0.5)]">
+                      +{data.sleepDebuff?.active ? Math.round(quest.xp * 0.8) : quest.xp} XP
+                    </div>
+
+                    <div className="flex items-center gap-1 pl-1 border-l border-gray-800">
+                      <button
+                        onClick={() => onEditQuest(quest)}
+                        className="p-1 text-gray-500 hover:text-[#4FC3F7] transition-colors"
+                        title="Edit Quest"
                       >
-                        {quest.category}
-                      </span>
-                      {quest.id.includes('morgenroutine') && (
-                        <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
-                          SCH +2, GRA +1
-                        </span>
-                      )}
-                      {quest.id.includes('commute') && (
-                        <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
-                          HOR +2
-                        </span>
-                      )}
-                      {quest.id.includes('aktives-lernen') && (
-                        <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
-                          WOR +2, GRA +1
-                        </span>
-                      )}
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(quest.id)}
+                        className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+                        title="Delete Quest"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="font-hud font-bold text-xs sm:text-sm text-[#4FC3F7] tracking-wider drop-shadow-[0_0_6px_rgba(79,195,247,0.5)]">
-                    +{data.sleepDebuff?.active ? Math.round(quest.xp * 0.8) : quest.xp} XP
+                {quest.name.toLowerCase().includes('nachtruhe') && (
+                  <div className="pt-1.5 border-t border-slate-800/80 flex items-center gap-2 font-hud text-xs text-yellow-300/90 pl-9">
+                    <input
+                      type="checkbox"
+                      id="subPhoneOutside"
+                      checked={quest.subPhoneOutside || false}
+                      onChange={(e) => onToggleQuest(quest.id, { subPhoneOutside: e.target.checked })}
+                      className="w-3.5 h-3.5 accent-yellow-400 cursor-pointer"
+                    />
+                    <label htmlFor="subPhoneOutside" className="cursor-pointer select-none">
+                      📱 Phone charged outside bedroom
+                    </label>
                   </div>
+                )}
 
-                  <div className="flex items-center gap-1 pl-1 border-l border-gray-800">
-                    <button
-                      onClick={() => onEditQuest(quest)}
-                      className="p-1 text-gray-500 hover:text-[#4FC3F7] transition-colors"
-                      title="Edit Quest"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteId(quest.id)}
-                      className="p-1 text-gray-500 hover:text-red-400 transition-colors"
-                      title="Delete Quest"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                {quest.userNote && (
+                  <div className="text-[10px] font-mono text-cyan-300 bg-cyan-950/40 p-1 rounded border border-cyan-800/40 ml-9">
+                    🎧 Audio: "{quest.userNote}"
                   </div>
-                </div>
+                )}
               </div>
-
-              {quest.name.toLowerCase().includes('nachtruhe') && (
-                <div className="pt-1.5 border-t border-slate-800/80 flex items-center gap-2 font-hud text-xs text-yellow-300/90 pl-9">
-                  <input
-                    type="checkbox"
-                    id="subPhoneOutside"
-                    checked={quest.subPhoneOutside || false}
-                    onChange={(e) => onToggleQuest(quest.id, { subPhoneOutside: e.target.checked })}
-                    className="w-3.5 h-3.5 accent-yellow-400 cursor-pointer"
-                  />
-                  <label htmlFor="subPhoneOutside" className="cursor-pointer select-none">
-                    📱 Phone charged outside bedroom
-                  </label>
-                </div>
-              )}
-
-              {quest.userNote && (
-                <div className="text-[10px] font-mono text-cyan-300 bg-cyan-950/40 p-1 rounded border border-cyan-800/40 ml-9">
-                  🎧 Audio: "{quest.userNote}"
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </HudPanel>
 

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { SystemData, Quest, ExamGates, SkillStats } from './types/system';
+import { SystemData, Quest, ExamGates, SkillStats, QuestTemplate } from './types/system';
 import {
   loadSystemData,
   saveSystemData,
-  getNextLevelXP,
-  getRankForLevel,
   getInitialData,
   getTodayDateString,
 } from './utils/systemLogic';
@@ -12,18 +10,23 @@ import {
   fetchSupabaseData,
   syncSupabaseData,
   subscribeToCloudChanges,
+  supabase,
 } from './utils/supabaseClient';
 import { calculateLevelFromXP, applyStatDecay, calculateDualGateRank } from './utils/statLogic';
 import { ParticleBackground } from './components/ParticleBackground';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
 import { StatsView } from './components/StatsView';
+import { RiwayatView } from './components/RiwayatView';
+import { QuestManagerView } from './components/QuestManagerView';
+import { SkillRadarView } from './components/SkillRadarView';
+import { SettingsView } from './components/SettingsView';
 import { QuestCompleteModal } from './components/QuestCompleteModal';
 import { LevelUpModal } from './components/LevelUpModal';
 
 export const App: React.FC = () => {
   const [data, setData] = useState<SystemData>(loadSystemData);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'stats'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'stats' | 'riwayat' | 'manager' | 'radar' | 'settings'>('dashboard');
   const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
 
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
@@ -38,6 +41,12 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     async function initCloudSync() {
+      try {
+        await supabase.rpc('perform_daily_reset', { p_user_id: 'divo' });
+      } catch (err) {
+        console.warn('RPC perform_daily_reset call error:', err);
+      }
+
       const cloudData = await fetchSupabaseData();
       if (cloudData) {
         const today = getTodayDateString();
@@ -70,8 +79,6 @@ export const App: React.FC = () => {
   useEffect(() => {
     syncSupabaseData(data).then(() => setIsCloudSynced(true));
   }, [data]);
-
-  const levelInfo = calculateLevelFromXP(data.currentXP || 0);
 
   const addXP = (amount: number, statImpact?: Partial<Record<keyof SkillStats, number>>) => {
     const today = getTodayDateString();
@@ -310,6 +317,16 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleSaveTemplate = (tpl: QuestTemplate) => {
+    handleSaveQuest({
+      name: tpl.title,
+      timeSlot: tpl.timeSlot,
+      category: tpl.category,
+      xp: tpl.xpValue,
+      isMandatory: tpl.isMandatory,
+    });
+  };
+
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between p-3 sm:p-5 overflow-x-hidden">
       <ParticleBackground />
@@ -324,9 +341,10 @@ export const App: React.FC = () => {
           onQuickXP={handleQuickXP}
           onResetData={handleResetData}
           isCloudSynced={isCloudSynced}
+          quests={data.quests}
         />
 
-        {activeTab === 'dashboard' ? (
+        {activeTab === 'dashboard' && (
           <Dashboard
             data={data}
             nextLevelXP={500}
@@ -337,12 +355,29 @@ export const App: React.FC = () => {
             onEditQuest={(quest) => setEditingQuest(quest)}
             onDeleteQuest={handleDeleteQuest}
           />
-        ) : (
+        )}
+
+        {activeTab === 'stats' && (
           <StatsView
             data={data}
             onUpdateBossFight={handleUpdateBossFight}
             onToggleTitleUnlock={handleToggleTitleUnlock}
             onToggleExamGate={handleToggleExamGate}
+          />
+        )}
+
+        {activeTab === 'riwayat' && <RiwayatView data={data} />}
+
+        {activeTab === 'manager' && (
+          <QuestManagerView onSaveTemplate={handleSaveTemplate} />
+        )}
+
+        {activeTab === 'radar' && <SkillRadarView data={data} />}
+
+        {activeTab === 'settings' && (
+          <SettingsView
+            data={data}
+            onUpdateSettings={(updated) => setData((prev) => ({ ...prev, ...updated }))}
           />
         )}
       </main>
