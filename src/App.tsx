@@ -8,6 +8,11 @@ import {
   getInitialData,
   getTodayDateString,
 } from './utils/systemLogic';
+import {
+  fetchSupabaseData,
+  syncSupabaseData,
+  subscribeToCloudChanges,
+} from './utils/supabaseClient';
 import { ParticleBackground } from './components/ParticleBackground';
 import { Navbar } from './components/Navbar';
 import { Dashboard } from './components/Dashboard';
@@ -18,6 +23,7 @@ import { LevelUpModal } from './components/LevelUpModal';
 export const App: React.FC = () => {
   const [data, setData] = useState<SystemData>(loadSystemData);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'stats'>('dashboard');
+  const [isCloudSynced, setIsCloudSynced] = useState<boolean>(true);
 
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
 
@@ -30,7 +36,30 @@ export const App: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
-    saveSystemData(data);
+    async function initCloudSync() {
+      const cloudData = await fetchSupabaseData();
+      if (cloudData) {
+        setData(cloudData);
+        saveSystemData(cloudData);
+      } else {
+        await syncSupabaseData(data);
+      }
+    }
+
+    initCloudSync();
+
+    const unsubscribe = subscribeToCloudChanges((newData) => {
+      setData(newData);
+      saveSystemData(newData);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    syncSupabaseData(data).then(() => setIsCloudSynced(true));
   }, [data]);
 
   const currentNextLevelXP = getNextLevelXP(data.level);
@@ -118,19 +147,19 @@ export const App: React.FC = () => {
 
     const willComplete = !target.completed;
     let newVerbs = data.totalNewVerbs;
-    const newTitles = [...data.unlockedTitles];
+    const newUnlockedTitles = [...data.unlockedTitles];
 
     if (willComplete && addedVerbs && addedVerbs > 0) {
       newVerbs += addedVerbs;
-      if (newVerbs >= 100 && !newTitles.includes('polyglot-grinder')) {
-        newTitles.push('polyglot-grinder');
+      if (newVerbs >= 100 && !newUnlockedTitles.includes('polyglot-grinder')) {
+        newUnlockedTitles.push('polyglot-grinder');
       }
     }
 
     setData((prev) => ({
       ...prev,
       totalNewVerbs: newVerbs,
-      unlockedTitles: newTitles,
+      unlockedTitles: newUnlockedTitles,
       quests: prev.quests.map((q) =>
         q.id === questId ? { ...q, completed: willComplete } : q
       ),
@@ -258,6 +287,7 @@ export const App: React.FC = () => {
       const initial = getInitialData();
       setData(initial);
       saveSystemData(initial);
+      syncSupabaseData(initial);
     }
   };
 
@@ -274,6 +304,7 @@ export const App: React.FC = () => {
           onCloseEditQuest={() => setEditingQuest(null)}
           onQuickXP={handleQuickXP}
           onResetData={handleResetData}
+          isCloudSynced={isCloudSynced}
         />
 
         {activeTab === 'dashboard' ? (

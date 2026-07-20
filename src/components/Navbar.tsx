@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, BarChart3, Plus, RotateCcw, Zap } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Plus, RotateCcw, Zap, Cloud } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Quest } from '../types/system';
 
@@ -11,6 +11,7 @@ interface NavbarProps {
   onCloseEditQuest: () => void;
   onQuickXP: (amount: number) => void;
   onResetData: () => void;
+  isCloudSynced?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -21,6 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onCloseEditQuest,
   onQuickXP,
   onResetData,
+  isCloudSynced = true,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [timeSlotInput, setTimeSlotInput] = useState('');
@@ -76,9 +78,21 @@ export const Navbar: React.FC<NavbarProps> = ({
     <>
       <header className="sticky top-0 z-40 w-full max-w-md mx-auto mb-4 backdrop-blur-md bg-[#060913]/80 border-b border-[#4FC3F7]/30 py-2.5 px-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-hud font-black text-base sm:text-lg text-white tracking-widest uppercase">
+          <div className="flex items-center gap-1.5 font-hud font-black text-base sm:text-lg text-white tracking-widest uppercase">
             <span className="text-[#4FC3F7] animate-pulse">❖</span>
             <span className="glow-text-cyan">THE SYSTEM</span>
+            <span
+              className={clsx(
+                'ml-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex items-center gap-1',
+                isCloudSynced
+                  ? 'border-emerald-500/50 text-emerald-300 bg-emerald-950/40'
+                  : 'border-cyan-500/50 text-cyan-300 bg-cyan-950/40'
+              )}
+              title="Cloud Progress Synced via Supabase"
+            >
+              <Cloud className="w-3 h-3 text-emerald-400 animate-pulse" />
+              <span>CLOUD</span>
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 font-hud">
