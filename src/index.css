@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', 'Sora', sans-serif;
+    background-color: #060913;
+    color: #e2e8f0;
+    overflow-x: hidden;
+  }
+}
+
+.font-hud {
+  font-family: 'Chakra Petch', 'Orbitron', sans-serif;
+}
+
+.font-sora {
+  font-family: 'Sora', 'Inter', sans-serif;
+}
+
+/* Notched HUD clip paths */
+.hud-notched {
+  clip-path: polygon(
+    14px 0,
+    100% 0,
+    100% calc(100% - 14px),
+    calc(100% - 14px) 100%,
+    0 100%,
+    0 14px
+  );
+}
+
+.hud-notched-lg {
+  clip-path: polygon(
+    20px 0,
+    100% 0,
+    100% calc(100% - 20px),
+    calc(100% - 20px) 100%,
+    0 100%,
+    0 20px
+  );
+}
+
+.hud-notched-sm {
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+}
+
+/* Scanline Overlay */
+.hud-scanlines {
+  background-image: linear-gradient(
+    rgba(79, 195, 247, 0.03) 50%,
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+}
+
+/* Cyan Glowing Panels */
+.panel-cyan {
+  background: rgba(10, 18, 38, 0.82);
+  border: 1.5px solid #4FC3F7;
+  box-shadow: 0 0 16px rgba(79, 195, 247, 0.25), inset 0 0 12px rgba(79, 195, 247, 0.1);
+}
+
+.panel-purple {
+  background: rgba(18, 12, 38, 0.82);
+  border: 1.5px solid #7C4DFF;
+  box-shadow: 0 0 16px rgba(124, 77, 255, 0.3), inset 0 0 12px rgba(124, 77, 255, 0.12);
+}
+
+.panel-red {
+  background: rgba(38, 12, 18, 0.82);
+  border: 1.5px solid #FF5252;
+  box-shadow: 0 0 16px rgba(255, 82, 82, 0.35), inset 0 0 12px rgba(255, 82, 82, 0.12);
+}
+
+/* Glowing Text Effects */
+.glow-text-cyan {
+  color: #E0F7FA;
+  text-shadow: 0 0 8px rgba(79, 195, 247, 0.9), 0 0 18px rgba(79, 195, 247, 0.5);
+}
+
+.glow-text-bright {
+  color: #FFFFFF;
+  text-shadow: 0 0 12px rgba(79, 195, 247, 1), 0 0 24px rgba(79, 195, 247, 0.8), 0 0 40px rgba(0, 229, 255, 0.6);
+}
+
+.glow-text-purple {
+  color: #F3E5F5;
+  text-shadow: 0 0 8px rgba(124, 77, 255, 0.9), 0 0 18px rgba(124, 77, 255, 0.5);
+}
+
+.glow-text-red {
+  color: #FFEBEE;
+  text-shadow: 0 0 8px rgba(255, 82, 82, 0.9), 0 0 18px rgba(255, 82, 82, 0.5);
+}
+
+/* Hazard Stripe Border Pattern */
+.hazard-border {
+  background: repeating-linear-gradient(
+    -45deg,
+    #FF5252,
+    #FF5252 8px,
+    #0F0814 8px,
+    #0F0814 16px
+  );
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 25s linear infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes rise-beam {
+  0% {
+    transform: translateY(100%) scaleX(0.8);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-100%) scaleX(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-rise-beam-1 {
+  animation: rise-beam 4s ease-in-out infinite;
+}
+
+.animate-rise-beam-2 {
+  animation: rise-beam 6s ease-in-out infinite 1.5s;
+}
+
+.animate-rise-beam-3 {
+  animation: rise-beam 5s ease-in-out infinite 0.8s;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #060913;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4FC3F7;
+}
