@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SystemData, TitleItem } from '../types/system';
+import { SystemData, TitleItem, ExamGates } from '../types/system';
 import { HudPanel, DiamondDivider } from './HudPanel';
 import { TITLES_LIST, getDaysRemaining } from '../utils/systemLogic';
 import {
@@ -14,6 +14,7 @@ import {
   Lock,
   Edit2,
   Check,
+  Award,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -21,12 +22,14 @@ interface StatsViewProps {
   data: SystemData;
   onUpdateBossFight: (examName: string, targetDate: string) => void;
   onToggleTitleUnlock?: (titleId: string) => void;
+  onToggleExamGate: (gateKey: keyof ExamGates) => void;
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({
   data,
   onUpdateBossFight,
   onToggleTitleUnlock,
+  onToggleExamGate,
 }) => {
   const [isEditingBoss, setIsEditingBoss] = useState(false);
   const [examNameInput, setExamNameInput] = useState(data.bossFight.examName);
@@ -72,7 +75,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
   ];
 
   const maxHistoryXP = Math.max(
-    2500,
+    300,
     ...data.dailyHistory.map((d) => d.xpEarned)
   );
 
@@ -84,6 +87,104 @@ export const StatsView: React.FC<StatsViewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-5 w-full max-w-md mx-auto">
       <HudPanel variant="cyan" notchSize="md">
+        <div className="flex items-center justify-between">
+          <h2 className="font-hud tracking-widest text-[#4FC3F7] text-lg sm:text-xl font-bold uppercase">
+            REAL EXAM GATES
+          </h2>
+          <Award className="w-5 h-5 text-[#4FC3F7]" />
+        </div>
+
+        <p className="font-hud text-[11px] text-gray-400 mt-1 leading-relaxed">
+          Rank B/A/S butuh konfirmasi lulus Goethe resmi. Centang saat Anda benar-benar lulus ujian:
+        </p>
+
+        <DiamondDivider count={1} variant="cyan" />
+
+        <div className="space-y-2 font-hud text-xs">
+          <div
+            onClick={() => onToggleExamGate('passedB1')}
+            className={clsx(
+              'flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer select-none',
+              data.examGates.passedB1
+                ? 'bg-[#4FC3F7]/15 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.2)]'
+                : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={clsx(
+                  'w-5 h-5 rounded-sm border flex items-center justify-center transition-colors',
+                  data.examGates.passedB1
+                    ? 'border-[#4FC3F7] bg-[#4FC3F7] text-slate-950 font-bold'
+                    : 'border-slate-700 bg-black/40'
+                )}
+              >
+                {data.examGates.passedB1 && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </div>
+              <span className="font-semibold">Lulus Goethe B1</span>
+            </div>
+            <span className="text-[10px] uppercase font-bold text-[#4FC3F7]">
+              Unlocks B-Rank
+            </span>
+          </div>
+
+          <div
+            onClick={() => onToggleExamGate('passedB2')}
+            className={clsx(
+              'flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer select-none',
+              data.examGates.passedB2
+                ? 'bg-[#4FC3F7]/15 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.2)]'
+                : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={clsx(
+                  'w-5 h-5 rounded-sm border flex items-center justify-center transition-colors',
+                  data.examGates.passedB2
+                    ? 'border-[#4FC3F7] bg-[#4FC3F7] text-slate-950 font-bold'
+                    : 'border-slate-700 bg-black/40'
+                )}
+              >
+                {data.examGates.passedB2 && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </div>
+              <span className="font-semibold">Lulus Goethe B2</span>
+            </div>
+            <span className="text-[10px] uppercase font-bold text-[#4FC3F7]">
+              Unlocks A-Rank
+            </span>
+          </div>
+
+          <div
+            onClick={() => onToggleExamGate('passedC1')}
+            className={clsx(
+              'flex items-center justify-between p-2.5 rounded border transition-all cursor-pointer select-none',
+              data.examGates.passedC1
+                ? 'bg-[#4FC3F7]/15 border-[#4FC3F7] text-white shadow-[0_0_10px_rgba(79,195,247,0.2)]'
+                : 'bg-slate-900/60 border-slate-800 text-gray-400 hover:border-slate-700'
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={clsx(
+                  'w-5 h-5 rounded-sm border flex items-center justify-center transition-colors',
+                  data.examGates.passedC1
+                    ? 'border-[#4FC3F7] bg-[#4FC3F7] text-slate-950 font-bold'
+                    : 'border-slate-700 bg-black/40'
+                )}
+              >
+                {data.examGates.passedC1 && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </div>
+              <span className="font-semibold">Lulus Goethe C1</span>
+            </div>
+            <span className="text-[10px] uppercase font-bold text-[#4FC3F7]">
+              Unlocks S-Rank
+            </span>
+          </div>
+        </div>
+      </HudPanel>
+
+      <HudPanel variant="cyan" notchSize="md">
         <div className="text-center">
           <h2 className="font-hud tracking-widest text-[#4FC3F7] text-lg sm:text-xl font-bold uppercase">
             WEEKLY XP
@@ -94,11 +195,11 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
         <div className="relative pt-4 pb-2 px-1">
           <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[9px] font-mono text-gray-500 pr-1">
-            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">2500K</div>
-            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">2000K</div>
-            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">1500K</div>
-            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">1000K</div>
-            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">500K</div>
+            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">250 XP</div>
+            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">200 XP</div>
+            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">150 XP</div>
+            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">100 XP</div>
+            <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">50 XP</div>
             <div className="border-b border-gray-800/60 w-full flex justify-start pl-1">0</div>
           </div>
 
@@ -107,7 +208,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
               const entry = data.dailyHistory.find((h) => h.day === day) || {
                 xpEarned: 0,
               };
-              const heightPct = Math.min(100, Math.max(8, (entry.xpEarned / maxHistoryXP) * 100));
+              const heightPct = Math.min(100, Math.max(6, (entry.xpEarned / maxHistoryXP) * 100));
 
               return (
                 <div key={day} className="flex-1 flex flex-col items-center h-full justify-end group">
@@ -135,6 +236,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
           <h2 className="font-hud tracking-widest text-[#4FC3F7] text-lg sm:text-xl font-bold uppercase">
             TITLES
           </h2>
+          <div className="text-[10px] font-hud text-gray-400 mt-0.5">
+            Total Verba Terkumpul: <strong className="text-[#4FC3F7]">{data.totalNewVerbs}</strong> / 100
+          </div>
         </div>
 
         <DiamondDivider count={1} variant="cyan" />
@@ -194,7 +298,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 <div
                   className={clsx(
                     'font-hud text-[10px] sm:text-xs font-bold leading-tight tracking-wider uppercase max-w-[95px]',
-                    isUnlocked ? 'text-white glow-text-cyan' : 'text-gray-500'
+                    isUnlocked ? 'text-[#4FC3F7] glow-text-cyan' : 'text-gray-500'
                   )}
                 >
                   {title.name}

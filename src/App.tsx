@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SystemData, Quest } from './types/system';
+import { SystemData, Quest, ExamGates } from './types/system';
 import {
   loadSystemData,
   saveSystemData,
@@ -18,6 +18,8 @@ import { LevelUpModal } from './components/LevelUpModal';
 export const App: React.FC = () => {
   const [data, setData] = useState<SystemData>(loadSystemData);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'stats'>('dashboard');
+
+  const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
 
   const [questCompleteXP, setQuestCompleteXP] = useState<number | null>(null);
   const [levelUpData, setLevelUpData] = useState<{
@@ -39,7 +41,6 @@ export const App: React.FC = () => {
     let nextReq = getNextLevelXP(newLevel);
     let didLevelUp = false;
     let oldRank = data.rank;
-    let newRank = oldRank;
     let newlyUnlockedTitle: string | undefined;
 
     const newUnlockedTitles = [...data.unlockedTitles];
@@ -51,9 +52,9 @@ export const App: React.FC = () => {
       nextReq = getNextLevelXP(newLevel);
     }
 
-    if (didLevelUp) {
-      newRank = getRankForLevel(newLevel);
+    const newRank = getRankForLevel(newLevel, data.examGates);
 
+    if (didLevelUp) {
       if (newLevel >= 20 && !newUnlockedTitles.includes('shadow-monarch')) {
         newUnlockedTitles.push('shadow-monarch');
         newlyUnlockedTitle = 'Shadow Monarch (in training)';
@@ -64,12 +65,29 @@ export const App: React.FC = () => {
     }
 
     const today = getTodayDateString();
-    const updatedHistory = data.dailyHistory.map((h) => {
-      if (h.date === today) {
-        return { ...h, xpEarned: h.xpEarned + amount };
-      }
-      return h;
-    });
+    const existingEntryIdx = data.dailyHistory.findIndex((h) => h.date === today);
+    let updatedHistory = [...data.dailyHistory];
+
+    const dayName = (['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][
+      new Date().getDay()
+    ] as any);
+
+    if (existingEntryIdx >= 0) {
+      updatedHistory[existingEntryIdx] = {
+        ...updatedHistory[existingEntryIdx],
+        xpEarned: updatedHistory[existingEntryIdx].xpEarned + amount,
+      };
+    } else {
+      updatedHistory.push({
+        date: today,
+        day: dayName,
+        xpEarned: amount,
+      });
+    }
+
+    if (updatedHistory.length > 7) {
+      updatedHistory = updatedHistory.slice(-7);
+    }
 
     setData((prev) => ({
       ...prev,
@@ -94,14 +112,25 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleToggleQuest = (questId: string) => {
+  const handleToggleQuest = (questId: string, addedVerbs?: number) => {
     const target = data.quests.find((q) => q.id === questId);
     if (!target) return;
 
     const willComplete = !target.completed;
+    let newVerbs = data.totalNewVerbs;
+    const newTitles = [...data.unlockedTitles];
+
+    if (willComplete && addedVerbs && addedVerbs > 0) {
+      newVerbs += addedVerbs;
+      if (newVerbs >= 100 && !newTitles.includes('polyglot-grinder')) {
+        newTitles.push('polyglot-grinder');
+      }
+    }
 
     setData((prev) => ({
       ...prev,
+      totalNewVerbs: newVerbs,
+      unlockedTitles: newTitles,
       quests: prev.quests.map((q) =>
         q.id === questId ? { ...q, completed: willComplete } : q
       ),
@@ -117,19 +146,83 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleTriggerInstantDungeon = () => {
-    addXP(150);
-  };
+  const handleToggleInstantTask = (taskId: string) => {
+    const target = data.instantDungeonTasks.find((t) => t.id === taskId);
+    if (!target) return;
 
-  const handleAddQuest = (newQuestData: Omit<Quest, 'id' | 'completed'>) => {
-    const newQuest: Quest = {
-      ...newQuestData,
-      id: `quest-${Date.now()}`,
-      completed: false,
-    };
+    const willComplete = !target.completed;
+
     setData((prev) => ({
       ...prev,
-      quests: [...prev.quests, newQuest],
+      instantDungeonTasks: prev.instantDungeonTasks.map((t) =>
+        t.id === taskId ? { ...t, completed: willComplete } : t
+      ),
+    }));
+
+    if (willComplete) {
+      addXP(target.xp);
+    } else {
+      setData((prev) => ({
+        ...prev,
+        currentXP: Math.max(0, prev.currentXP - target.xp),
+      }));
+    }
+  };
+
+  const handleUseGraceToken = () => {
+    if (data.graceTokens <= 0 || data.streakProtectedToday) return;
+
+    setData((prev) => ({
+      ...prev,
+      graceTokens: prev.graceTokens - 1,
+      streakProtectedToday: true,
+    }));
+  };
+
+  const handleToggleExamGate = (gateKey: keyof ExamGates) => {
+    const updatedGates = {
+      ...data.examGates,
+      [gateKey]: !data.examGates[gateKey],
+    };
+    const newRank = getRankForLevel(data.level, updatedGates);
+
+    setData((prev) => ({
+      ...prev,
+      examGates: updatedGates,
+      rank: newRank,
+    }));
+  };
+
+  const handleSaveQuest = (questData: Partial<Quest>, editId?: string) => {
+    if (editId) {
+      setData((prev) => ({
+        ...prev,
+        quests: prev.quests.map((q) =>
+          q.id === editId ? { ...q, ...questData } : q
+        ),
+      }));
+    } else {
+      const newQuest: Quest = {
+        id: `quest-${Date.now()}`,
+        name: questData.name || 'New Quest',
+        timeSlot: questData.timeSlot,
+        duration: questData.duration,
+        category: questData.category || 'OTHER',
+        xp: questData.xp || 20,
+        completed: false,
+        isMandatory: questData.isMandatory !== undefined ? questData.isMandatory : true,
+      };
+      setData((prev) => ({
+        ...prev,
+        quests: [...prev.quests, newQuest],
+      }));
+    }
+  };
+
+  const handleDeleteQuest = (questId: string) => {
+    setData((prev) => ({
+      ...prev,
+      quests: prev.quests.filter((q) => q.id !== questId),
     }));
   };
 
@@ -176,7 +269,9 @@ export const App: React.FC = () => {
         <Navbar
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          onAddQuest={handleAddQuest}
+          onSaveQuest={handleSaveQuest}
+          editingQuest={editingQuest}
+          onCloseEditQuest={() => setEditingQuest(null)}
           onQuickXP={handleQuickXP}
           onResetData={handleResetData}
         />
@@ -186,13 +281,18 @@ export const App: React.FC = () => {
             data={data}
             nextLevelXP={currentNextLevelXP}
             onToggleQuest={handleToggleQuest}
-            onTriggerInstantDungeon={handleTriggerInstantDungeon}
+            onToggleInstantTask={handleToggleInstantTask}
+            onUseGraceToken={handleUseGraceToken}
+            onUpdateBossFight={handleUpdateBossFight}
+            onEditQuest={(quest) => setEditingQuest(quest)}
+            onDeleteQuest={handleDeleteQuest}
           />
         ) : (
           <StatsView
             data={data}
             onUpdateBossFight={handleUpdateBossFight}
             onToggleTitleUnlock={handleToggleTitleUnlock}
+            onToggleExamGate={handleToggleExamGate}
           />
         )}
       </main>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, BarChart3, Plus, RotateCcw, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Quest } from '../types/system';
@@ -6,7 +6,9 @@ import { Quest } from '../types/system';
 interface NavbarProps {
   activeTab: 'dashboard' | 'stats';
   onTabChange: (tab: 'dashboard' | 'stats') => void;
-  onAddQuest: (quest: Omit<Quest, 'id' | 'completed'>) => void;
+  onSaveQuest: (questData: Partial<Quest>, editId?: string) => void;
+  editingQuest: Quest | null;
+  onCloseEditQuest: () => void;
   onQuickXP: (amount: number) => void;
   onResetData: () => void;
 }
@@ -14,30 +16,60 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
-  onAddQuest,
+  onSaveQuest,
+  editingQuest,
+  onCloseEditQuest,
   onQuickXP,
   onResetData,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [timeSlotInput, setTimeSlotInput] = useState('');
   const [nameInput, setNameInput] = useState('');
   const [durationInput, setDurationInput] = useState('');
   const [categoryInput, setCategoryInput] = useState<'KÖRPER' | 'SPRACHE' | 'CONTENT' | 'OTHER'>('SPRACHE');
   const [xpInput, setXpInput] = useState('25');
+  const [isMandatoryInput, setIsMandatoryInput] = useState(true);
 
-  const handleCreateQuest = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (editingQuest) {
+      setTimeSlotInput(editingQuest.timeSlot || '');
+      setNameInput(editingQuest.name);
+      setDurationInput(editingQuest.duration || '');
+      setCategoryInput(editingQuest.category);
+      setXpInput(String(editingQuest.xp));
+      setIsMandatoryInput(editingQuest.isMandatory);
+      setShowAddModal(true);
+    }
+  }, [editingQuest]);
+
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameInput.trim()) return;
 
-    onAddQuest({
-      name: nameInput.trim(),
-      duration: durationInput.trim() || undefined,
-      category: categoryInput,
-      xp: parseInt(xpInput, 10) || 25,
-    });
+    onSaveQuest(
+      {
+        timeSlot: timeSlotInput.trim() || undefined,
+        name: nameInput.trim(),
+        duration: durationInput.trim() || undefined,
+        category: categoryInput,
+        xp: parseInt(xpInput, 10) || 20,
+        isMandatory: isMandatoryInput,
+      },
+      editingQuest ? editingQuest.id : undefined
+    );
 
+    handleCloseModal();
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    onCloseEditQuest();
+    setTimeSlotInput('');
     setNameInput('');
     setDurationInput('');
-    setShowAddModal(false);
+    setCategoryInput('SPRACHE');
+    setXpInput('25');
+    setIsMandatoryInput(true);
   };
 
   return (
@@ -106,13 +138,24 @@ export const Navbar: React.FC<NavbarProps> = ({
       </header>
 
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fadeIn">
           <div className="w-full max-w-xs sm:max-w-sm bg-[#0B1528] border-2 border-[#4FC3F7] p-5 rounded-md shadow-[0_0_30px_rgba(79,195,247,0.4)] font-hud">
             <h3 className="text-lg font-bold text-[#4FC3F7] tracking-widest uppercase mb-4">
-              ADD NEW DAILY QUEST
+              {editingQuest ? 'EDIT QUEST' : 'ADD NEW QUEST'}
             </h3>
 
-            <form onSubmit={handleCreateQuest} className="space-y-3 text-xs">
+            <form onSubmit={handleFormSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-gray-300 font-semibold mb-1">TIME SLOT (OPTIONAL):</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 07:00–08:00"
+                  value={timeSlotInput}
+                  onChange={(e) => setTimeSlotInput(e.target.value)}
+                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-white focus:outline-none focus:border-[#4FC3F7]"
+                />
+              </div>
+
               <div>
                 <label className="block text-gray-300 font-semibold mb-1">QUEST NAME:</label>
                 <input
@@ -158,8 +201,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                   max="500"
                   value={xpInput}
                   onChange={(e) => setXpInput(e.target.value)}
-                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-white focus:outline-none focus:border-[#4FC3F7]"
+                  className="w-full p-2 bg-black/60 border border-[#4FC3F7]/50 rounded text-[#4FC3F7] font-bold focus:outline-none focus:border-[#4FC3F7]"
                 />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="mandatoryCheck"
+                  checked={isMandatoryInput}
+                  onChange={(e) => setIsMandatoryInput(e.target.checked)}
+                  className="w-4 h-4 accent-[#4FC3F7] cursor-pointer"
+                />
+                <label htmlFor="mandatoryCheck" className="text-gray-300 font-semibold cursor-pointer">
+                  Quest Wajib (Block Streak jika terlewat)
+                </label>
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -167,11 +223,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   type="submit"
                   className="flex-1 py-2 bg-[#4FC3F7] text-slate-950 font-bold rounded hover:bg-[#00E5FF] transition-all shadow-[0_0_10px_#4FC3F7]"
                 >
-                  ADD QUEST
+                  {editingQuest ? 'SIMPAN PERUBAHAN' : 'ADD QUEST'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 bg-slate-800 text-gray-300 font-bold rounded hover:bg-slate-700"
                 >
                   CANCEL

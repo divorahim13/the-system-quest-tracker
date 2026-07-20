@@ -4,6 +4,9 @@ export const ParticleBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (mediaQuery.matches) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -19,7 +22,7 @@ export const ParticleBackground: React.FC = () => {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const particleCount = 45;
+    const particleCount = 55;
     const particles: Array<{
       x: number;
       y: number;
@@ -34,11 +37,11 @@ export const ParticleBackground: React.FC = () => {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        size: Math.random() * 2 + 0.8,
-        speedY: -(Math.random() * 0.35 + 0.1),
-        speedX: (Math.random() - 0.5) * 0.15,
-        opacity: Math.random() * 0.6 + 0.2,
-        pulseSpeed: Math.random() * 0.02 + 0.005,
+        size: Math.random() * 2.2 + 0.8,
+        speedY: -(Math.random() * 0.4 + 0.15),
+        speedX: (Math.random() - 0.5) * 0.25,
+        opacity: Math.random() * 0.65 + 0.25,
+        pulseSpeed: Math.random() * 0.025 + 0.008,
       });
     }
 
@@ -51,7 +54,7 @@ export const ParticleBackground: React.FC = () => {
         50,
         canvas.width / 2,
         canvas.height / 2,
-        canvas.width * 0.8
+        canvas.width * 0.85
       );
       gradient.addColorStop(0, 'rgba(15, 32, 67, 0.45)');
       gradient.addColorStop(0.5, 'rgba(8, 16, 36, 0.65)');
@@ -63,7 +66,7 @@ export const ParticleBackground: React.FC = () => {
       particles.forEach((p) => {
         p.y += p.speedY;
         p.x += p.speedX;
-        p.opacity += Math.sin(Date.now() * p.pulseSpeed) * 0.005;
+        p.opacity += Math.sin(Date.now() * p.pulseSpeed) * 0.008;
 
         if (p.y < 0) {
           p.y = canvas.height + 10;
@@ -74,8 +77,8 @@ export const ParticleBackground: React.FC = () => {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(79, 195, 247, ${Math.max(0.1, Math.min(0.8, p.opacity))})`;
-        ctx.shadowBlur = 8;
+        ctx.fillStyle = `rgba(79, 195, 247, ${Math.max(0.15, Math.min(0.85, p.opacity))})`;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = '#4FC3F7';
         ctx.fill();
       });

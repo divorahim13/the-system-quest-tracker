@@ -17,41 +17,39 @@
   font-family: 'Sora', 'Inter', sans-serif;
 }
 
-/* Notched HUD clip paths */
 .hud-notched {
   clip-path: polygon(
-    14px 0,
+    22px 0,
     100% 0,
-    100% calc(100% - 14px),
-    calc(100% - 14px) 100%,
+    100% calc(100% - 22px),
+    calc(100% - 22px) 100%,
     0 100%,
-    0 14px
+    0 22px
   );
 }
 
 .hud-notched-lg {
   clip-path: polygon(
-    20px 0,
+    26px 0,
     100% 0,
-    100% calc(100% - 20px),
-    calc(100% - 20px) 100%,
+    100% calc(100% - 26px),
+    calc(100% - 26px) 100%,
     0 100%,
-    0 20px
+    0 26px
   );
 }
 
 .hud-notched-sm {
   clip-path: polygon(
-    8px 0,
+    10px 0,
     100% 0,
-    100% calc(100% - 8px),
-    calc(100% - 8px) 100%,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
     0 100%,
-    0 8px
+    0 10px
   );
 }
 
-/* Scanline Overlay */
 .hud-scanlines {
   background-image: linear-gradient(
     rgba(79, 195, 247, 0.03) 50%,
@@ -60,7 +58,6 @@
   background-size: 100% 4px;
 }
 
-/* Cyan Glowing Panels */
 .panel-cyan {
   background: rgba(10, 18, 38, 0.82);
   border: 1.5px solid #4FC3F7;
@@ -79,7 +76,6 @@
   box-shadow: 0 0 16px rgba(255, 82, 82, 0.35), inset 0 0 12px rgba(255, 82, 82, 0.12);
 }
 
-/* Glowing Text Effects */
 .glow-text-cyan {
   color: #E0F7FA;
   text-shadow: 0 0 8px rgba(79, 195, 247, 0.9), 0 0 18px rgba(79, 195, 247, 0.5);
@@ -100,7 +96,6 @@
   text-shadow: 0 0 8px rgba(255, 82, 82, 0.9), 0 0 18px rgba(255, 82, 82, 0.5);
 }
 
-/* Hazard Stripe Border Pattern */
 .hazard-border {
   background: repeating-linear-gradient(
     -45deg,
@@ -122,6 +117,38 @@
 
 .animate-spin-slow {
   animation: spin-slow 25s linear infinite;
+}
+
+@keyframes quest-complete-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(79, 195, 247, 0);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(79, 195, 247, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(79, 195, 247, 0.15);
+  }
+}
+
+.animate-quest-pulse {
+  animation: quest-complete-pulse 0.4s ease-out 1;
+}
+
+@keyframes sweep-light {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-sweep {
+  animation: sweep-light 2.5s infinite linear;
 }
 
 @keyframes pulse-glow {
