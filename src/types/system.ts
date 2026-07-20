@@ -1,4 +1,53 @@
-export type QuestCategory = 'KÖRPER' | 'SPRACHE' | 'CONTENT' | 'OTHER';
+export type QuestCategory = 'SPRACHE' | 'KÖRPER' | 'CONTENT' | 'DISCIPLINE' | 'REVISION' | 'EXAM' | 'OTHER';
+
+export interface LearningPhase {
+  id: number;
+  name: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface QuestTemplate {
+  id: string;
+  title: string;
+  description?: string;
+  category: QuestCategory;
+  timeSlot?: string;
+  recurrence: 'daily' | 'saturday' | 'sunday' | 'boss_fight' | 'raid_boss';
+  activePhase?: number;
+  xpValue: number;
+  isMandatory: boolean;
+}
+
+export interface QuestLogItem {
+  id?: string;
+  questTemplateId: string;
+  logDate: string;
+  completed: boolean;
+  subPhoneOutside?: boolean;
+  userNote?: string;
+  ktScore?: number;
+}
+
+export interface UsedVerb {
+  id?: string;
+  verb: string;
+  meaning?: string;
+  loggedDate: string;
+}
+
+export interface SleepDebuffState {
+  active: boolean;
+  consecutiveFailures: number;
+}
+
+export interface SeparatedStreaks {
+  morgenroutine: number;
+  aktivesLernen: number;
+  nachtruhe: number;
+  commute: number;
+}
 
 export interface Quest {
   id: string;
@@ -9,6 +58,10 @@ export interface Quest {
   xp: number;
   completed: boolean;
   isMandatory: boolean;
+  templateId?: string;
+  subPhoneOutside?: boolean;
+  userNote?: string;
+  ktScore?: number;
 }
 
 export interface InstantDungeonTask {
@@ -52,8 +105,12 @@ export interface SystemData {
   lastGraceRefillMonth: string;
   streakProtectedToday: boolean;
   totalNewVerbs: number;
+  usedVerbsList: UsedVerb[];
   examGates: ExamGates;
   lastActiveDate: string;
+  currentPhase: LearningPhase;
+  sleepDebuff: SleepDebuffState;
+  streaks: SeparatedStreaks;
   quests: Quest[];
   instantDungeonTasks: InstantDungeonTask[];
   dailyHistory: DailyHistoryEntry[];

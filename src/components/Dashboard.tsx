@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { SystemData, Quest } from '../types/system';
 import { HudPanel, DiamondDivider } from './HudPanel';
 import { getDaysRemaining } from '../utils/systemLogic';
-import { Flame, Check, Zap, Edit2, Trash2, Edit } from 'lucide-react';
+import { Flame, Check, Zap, Edit2, Trash2, Edit, ShieldAlert, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface DashboardProps {
   data: SystemData;
   nextLevelXP: number;
-  onToggleQuest: (questId: string, addedVerbs?: number) => void;
+  onToggleQuest: (questId: string, payload?: { addedVerbs?: number; subPhoneOutside?: boolean; userNote?: string; ktScore?: number }) => void;
   onToggleInstantTask: (taskId: string) => void;
   onUseGraceToken: () => void;
   onUpdateBossFight: (examName: string, targetDate: string) => void;
@@ -31,6 +31,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [verbInput, setVerbInput] = useState('5');
   const [activeTagebuchQuestId, setActiveTagebuchQuestId] = useState<string | null>(null);
 
+  const [showCommuteModal, setShowCommuteModal] = useState(false);
+  const [podcastNote, setPodcastNote] = useState('');
+  const [activeCommuteQuestId, setActiveCommuteQuestId] = useState<string | null>(null);
+
+  const [showKTModal, setShowKTModal] = useState(false);
+  const [ktScoreInput, setKtScoreInput] = useState('25');
+  const [activeKTQuestId, setActiveKTQuestId] = useState<string | null>(null);
+
   const [isEditingBoss, setIsEditingBoss] = useState(false);
   const [bossNameInput, setBossNameInput] = useState(data.bossFight.examName);
   const [bossDateInput, setBossDateInput] = useState(data.bossFight.targetDate);
@@ -47,28 +55,67 @@ export const Dashboard: React.FC<DashboardProps> = ({
         return 'border-[#4FC3F7]/60 text-[#4FC3F7] bg-cyan-950/40';
       case 'CONTENT':
         return 'border-purple-400/60 text-purple-300 bg-purple-950/40';
+      case 'DISCIPLINE':
+        return 'border-yellow-400/60 text-yellow-300 bg-yellow-950/40';
+      case 'REVISION':
+        return 'border-indigo-400/60 text-indigo-300 bg-indigo-950/40';
+      case 'EXAM':
+        return 'border-red-400/60 text-red-300 bg-red-950/40';
       default:
         return 'border-gray-400/60 text-gray-300 bg-gray-900/40';
     }
   };
 
   const handleQuestClick = (quest: Quest) => {
-    if (!quest.completed && quest.name.toLowerCase().includes('tagebuch')) {
-      setActiveTagebuchQuestId(quest.id);
-      setShowVerbModal(true);
-    } else {
-      onToggleQuest(quest.id);
+    if (!quest.completed) {
+      if (quest.name.toLowerCase().includes('tagebuch') || quest.id.includes('morgenroutine')) {
+        setActiveTagebuchQuestId(quest.id);
+        setShowVerbModal(true);
+        return;
+      }
+      if (quest.name.toLowerCase().includes('commute') || quest.name.toLowerCase().includes('unterwegs')) {
+        setActiveCommuteQuestId(quest.id);
+        setShowCommuteModal(true);
+        return;
+      }
+      if (quest.name.toLowerCase().includes('kapiteltest') || quest.id.includes('kt-boss')) {
+        setActiveKTQuestId(quest.id);
+        setShowKTModal(true);
+        return;
+      }
     }
+
+    onToggleQuest(quest.id);
   };
 
   const handleConfirmVerbs = (e: React.FormEvent) => {
     e.preventDefault();
     const count = parseInt(verbInput, 10) || 0;
     if (activeTagebuchQuestId) {
-      onToggleQuest(activeTagebuchQuestId, count);
+      onToggleQuest(activeTagebuchQuestId, { addedVerbs: count });
     }
     setShowVerbModal(false);
     setActiveTagebuchQuestId(null);
+  };
+
+  const handleConfirmCommute = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (activeCommuteQuestId) {
+      onToggleQuest(activeCommuteQuestId, { userNote: podcastNote });
+    }
+    setShowCommuteModal(false);
+    setActiveCommuteQuestId(null);
+    setPodcastNote('');
+  };
+
+  const handleConfirmKT = (e: React.FormEvent) => {
+    e.preventDefault();
+    const score = parseInt(ktScoreInput, 10) || 25;
+    if (activeKTQuestId) {
+      onToggleQuest(activeKTQuestId, { ktScore: score });
+    }
+    setShowKTModal(false);
+    setActiveKTQuestId(null);
   };
 
   const handleSaveBoss = () => {
@@ -78,6 +125,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-5 w-full max-w-md mx-auto">
+      <div className="p-2.5 rounded border border-[#4FC3F7]/40 bg-[#0A1830]/80 font-hud text-xs flex items-center justify-between shadow-[0_0_12px_rgba(79,195,247,0.2)]">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#4FC3F7] animate-pulse" />
+          <div>
+            <span className="font-bold text-gray-300 uppercase">{data.currentPhase?.name || 'Phase 1: B1 Intensiv'}</span>
+            <div className="text-[10px] text-[#4FC3F7] font-semibold">TITLE: {data.currentPhase?.title || 'B1 Lehrling'}</div>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono text-gray-400 bg-black/40 px-2 py-0.5 rounded border border-gray-800">
+          C1 Exam Dec 2026
+        </span>
+      </div>
+
+      {data.sleepDebuff?.active && (
+        <div className="p-3 rounded border border-red-500 bg-red-950/70 font-hud text-xs flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(255,82,82,0.5)]">
+          <ShieldAlert className="w-6 h-6 text-red-400 shrink-0" />
+          <div>
+            <h4 className="font-bold text-red-200 uppercase tracking-wider">BRAIN FOG DEBUFF ACTIVE!</h4>
+            <p className="text-[11px] text-red-300 leading-tight mt-0.5">
+              Gagal tidur disiplin (Nachtruhe) 2 hari berturut-turut. XP belajar hari ini berkurang <strong>0.8x</strong> (memory consolidation terganggu).
+            </p>
+          </div>
+        </div>
+      )}
+
       <HudPanel variant="cyan" notchSize="md">
         <div className="flex items-start justify-between">
           <div>
@@ -151,91 +223,109 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div
               key={quest.id}
               className={clsx(
-                'group relative flex items-center justify-between p-2.5 sm:p-3 rounded border transition-all duration-200 select-none',
+                'group relative flex flex-col p-2.5 sm:p-3 rounded border transition-all duration-200 select-none space-y-2',
                 quest.completed
                   ? 'bg-[#4FC3F7]/10 border-[#4FC3F7]/60 shadow-[0_0_10px_rgba(79,195,247,0.15)] animate-quest-pulse'
                   : 'bg-slate-900/40 border-slate-800 hover:border-[#4FC3F7]/40 hover:bg-slate-900/70'
               )}
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
-                <div
-                  onClick={() => handleQuestClick(quest)}
-                  className={clsx(
-                    'w-6 h-6 rounded-sm border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
-                    quest.completed
-                      ? 'border-[#4FC3F7] bg-[#4FC3F7] text-slate-950 shadow-[0_0_10px_#4FC3F7]'
-                      : 'border-[#4FC3F7]/50 bg-black/40 group-hover:border-[#4FC3F7]'
-                  )}
-                >
-                  {quest.completed && <Check className="w-4 h-4 stroke-[3]" />}
-                </div>
-
-                <div className="flex-1 min-w-0" onClick={() => handleQuestClick(quest)}>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {quest.timeSlot && (
-                      <span className="font-hud text-[10px] sm:text-xs text-[#4FC3F7] font-semibold">
-                        [{quest.timeSlot}]
-                      </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                  <div
+                    onClick={() => handleQuestClick(quest)}
+                    className={clsx(
+                      'w-6 h-6 rounded-sm border-2 flex items-center justify-center transition-all duration-200 cursor-pointer shrink-0',
+                      quest.completed
+                        ? 'border-[#4FC3F7] bg-[#4FC3F7] text-slate-950 shadow-[0_0_10px_#4FC3F7]'
+                        : 'border-[#4FC3F7]/50 bg-black/40 group-hover:border-[#4FC3F7]'
                     )}
-                    <span
-                      className={clsx(
-                        'font-hud font-semibold text-sm sm:text-base tracking-wide truncate',
-                        quest.completed ? 'text-gray-300 line-through opacity-80' : 'text-white'
-                      )}
-                    >
-                      {quest.name}
-                    </span>
-                    {quest.duration && (
-                      <span className="text-xs text-gray-400 font-sans">
-                        ({quest.duration})
-                      </span>
-                    )}
+                  >
+                    {quest.completed && <Check className="w-4 h-4 stroke-[3]" />}
                   </div>
 
-                  <div className="flex items-center gap-2 mt-1">
-                    <span
-                      className={clsx(
-                        'inline-block text-[9px] sm:text-[10px] font-hud font-bold px-2 py-0.5 border rounded-full uppercase tracking-wider',
-                        getCategoryColor(quest.category)
+                  <div className="flex-1 min-w-0" onClick={() => handleQuestClick(quest)}>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {quest.timeSlot && (
+                        <span className="font-hud text-[10px] sm:text-xs text-[#4FC3F7] font-semibold">
+                          [{quest.timeSlot}]
+                        </span>
                       )}
+                      <span
+                        className={clsx(
+                          'font-hud font-semibold text-sm sm:text-base tracking-wide truncate',
+                          quest.completed ? 'text-gray-300 line-through opacity-80' : 'text-white'
+                        )}
+                      >
+                        {quest.name}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1">
+                      <span
+                        className={clsx(
+                          'inline-block text-[9px] sm:text-[10px] font-hud font-bold px-2 py-0.5 border rounded-full uppercase tracking-wider',
+                          getCategoryColor(quest.category)
+                        )}
+                      >
+                        {quest.category}
+                      </span>
+                      {quest.isMandatory ? (
+                        <span className="text-[9px] font-hud text-red-400 font-bold uppercase">
+                          (Wajib)
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-hud text-yellow-300 font-bold uppercase">
+                          (Bonus)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="font-hud font-bold text-xs sm:text-sm text-[#4FC3F7] tracking-wider drop-shadow-[0_0_6px_rgba(79,195,247,0.5)]">
+                    +{data.sleepDebuff?.active ? Math.round(quest.xp * 0.8) : quest.xp} XP
+                  </div>
+
+                  <div className="flex items-center gap-1 pl-1 border-l border-gray-800">
+                    <button
+                      onClick={() => onEditQuest(quest)}
+                      className="p-1 text-gray-500 hover:text-[#4FC3F7] transition-colors"
+                      title="Edit Quest"
                     >
-                      {quest.category}
-                    </span>
-                    {quest.isMandatory ? (
-                      <span className="text-[9px] font-hud text-red-400 font-bold uppercase">
-                        (Wajib)
-                      </span>
-                    ) : (
-                      <span className="text-[9px] font-hud text-yellow-300 font-bold uppercase">
-                        (Bonus)
-                      </span>
-                    )}
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(quest.id)}
+                      className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+                      title="Delete Quest"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="font-hud font-bold text-xs sm:text-sm text-[#4FC3F7] tracking-wider drop-shadow-[0_0_6px_rgba(79,195,247,0.5)]">
-                  +{quest.xp} XP
+              {quest.name.toLowerCase().includes('nachtruhe') && (
+                <div className="pt-1.5 border-t border-slate-800/80 flex items-center gap-2 font-hud text-xs text-yellow-300/90 pl-9">
+                  <input
+                    type="checkbox"
+                    id="subPhoneOutside"
+                    checked={quest.subPhoneOutside || false}
+                    onChange={(e) => onToggleQuest(quest.id, { subPhoneOutside: e.target.checked })}
+                    className="w-3.5 h-3.5 accent-yellow-400 cursor-pointer"
+                  />
+                  <label htmlFor="subPhoneOutside" className="cursor-pointer select-none">
+                    📱 Phone charged outside bedroom
+                  </label>
                 </div>
+              )}
 
-                <div className="flex items-center gap-1 pl-1 border-l border-gray-800">
-                  <button
-                    onClick={() => onEditQuest(quest)}
-                    className="p-1 text-gray-500 hover:text-[#4FC3F7] transition-colors"
-                    title="Edit Quest"
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setConfirmDeleteId(quest.id)}
-                    className="p-1 text-gray-500 hover:text-red-400 transition-colors"
-                    title="Delete Quest"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+              {quest.userNote && (
+                <div className="text-[10px] font-mono text-cyan-300 bg-cyan-950/40 p-1 rounded border border-cyan-800/40 ml-9">
+                  🎧 Audio: "{quest.userNote}"
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
@@ -264,11 +354,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="mt-1 flex items-center gap-1.5 text-xs font-hud text-gray-300">
                 <span>🔥 Grace Token:</span>
                 <strong className="text-[#4FC3F7] font-bold">{data.graceTokens} remaining</strong>
-                {data.streakProtectedToday && (
-                  <span className="text-emerald-400 font-bold text-[10px] uppercase ml-1">
-                    (Protected Today)
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -400,7 +485,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <div className="relative inline-block w-full max-w-[260px] p-[6px] rounded hazard-border shadow-[0_0_20px_rgba(255,82,82,0.4)]">
               <div className="bg-[#0D0407] py-3.5 px-6 rounded-xs text-center border border-[#FF5252]/60">
-                <div className="font-hud font-black text-4xl sm:text-5xl text-white glow-text-red tracking-wider">
+                <div className="font-hud font-black text-4xl sm:text-5xl text-[#FF5252] glow-text-red tracking-wider">
                   D-{daysRemaining}
                 </div>
               </div>
@@ -409,33 +494,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
         )}
       </HudPanel>
 
-      {showGraceModal && (
+      {showCommuteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-xs sm:max-w-sm bg-[#0C1A30] border-2 border-[#4FC3F7] p-5 rounded-md text-center font-hud space-y-4 shadow-[0_0_30px_rgba(79,195,247,0.4)]">
-            <Flame className="w-10 h-10 text-[#4FC3F7] mx-auto animate-bounce" />
-            <h3 className="text-lg font-bold text-white uppercase tracking-wider">
-              PAKAI GRACE TOKEN?
+          <div className="w-full max-w-xs bg-[#0C1A30] border-2 border-[#4FC3F7] p-5 rounded-md font-hud text-center space-y-3 shadow-[0_0_30px_rgba(79,195,247,0.4)]">
+            <h3 className="text-base font-bold text-[#4FC3F7] uppercase tracking-wider">
+              UNTERWEGS LERNEN
             </h3>
-            <p className="text-xs text-gray-300 leading-relaxed">
-              Menggunakan 1 Grace Token akan melindungi streak Anda hari ini meskipun ada quest wajib yang belum selesai.
+            <p className="text-xs text-gray-300">
+              Judul podcast / audio Jerman yang didengarkan saat perjalanan motor:
             </p>
-            <div className="flex gap-2 pt-2">
+            <form onSubmit={handleConfirmCommute} className="space-y-3">
+              <input
+                type="text"
+                required
+                placeholder="e.g. Easy German Podcast Ep. 45"
+                value={podcastNote}
+                onChange={(e) => setPodcastNote(e.target.value)}
+                className="w-full p-2 bg-black/60 border border-[#4FC3F7] text-white text-xs rounded focus:outline-none"
+              />
               <button
-                onClick={() => {
-                  onUseGraceToken();
-                  setShowGraceModal(false);
-                }}
-                className="flex-1 py-2 bg-[#4FC3F7] text-slate-950 font-bold text-xs rounded hover:bg-[#00E5FF] transition-all"
+                type="submit"
+                className="w-full py-1.5 bg-[#4FC3F7] text-slate-950 font-bold text-xs rounded hover:bg-[#00E5FF]"
               >
-                KONFIRMASI
+                LOG & CLAIM XP
               </button>
-              <button
-                onClick={() => setShowGraceModal(false)}
-                className="px-4 py-2 bg-slate-800 text-gray-300 font-bold text-xs rounded hover:bg-slate-700"
-              >
-                BATAL
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -467,6 +550,66 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showKTModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-xs bg-[#1D080D] border-2 border-[#FF5252] p-5 rounded-md font-hud text-center space-y-3 shadow-[0_0_30px_rgba(255,82,82,0.4)]">
+            <h3 className="text-base font-bold text-[#FF5252] uppercase tracking-wider glow-text-red">
+              MAGNA KAPITELTEST (KT)
+            </h3>
+            <p className="text-xs text-gray-300">
+              Input skor Kapiteltest yang diraih (Target: 25/25 per modul):
+            </p>
+            <form onSubmit={handleConfirmKT} className="space-y-3">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={ktScoreInput}
+                onChange={(e) => setKtScoreInput(e.target.value)}
+                className="w-24 text-center py-1.5 px-2 bg-black/60 border border-[#FF5252] text-white font-bold text-lg rounded focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="w-full py-1.5 bg-[#FF5252] text-white font-bold text-xs rounded hover:bg-[#D50000]"
+              >
+                LOG SCORE & CLAIM +150 XP
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showGraceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-xs sm:max-w-sm bg-[#0C1A30] border-2 border-[#4FC3F7] p-5 rounded-md text-center font-hud space-y-4 shadow-[0_0_30px_rgba(79,195,247,0.4)]">
+            <Flame className="w-10 h-10 text-[#4FC3F7] mx-auto animate-bounce" />
+            <h3 className="text-lg font-bold text-white uppercase tracking-wider">
+              PAKAI GRACE TOKEN?
+            </h3>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Menggunakan 1 Grace Token akan melindungi streak Anda hari ini meskipun ada quest wajib yang belum selesai.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  onUseGraceToken();
+                  setShowGraceModal(false);
+                }}
+                className="flex-1 py-2 bg-[#4FC3F7] text-slate-950 font-bold text-xs rounded hover:bg-[#00E5FF] transition-all"
+              >
+                KONFIRMASI
+              </button>
+              <button
+                onClick={() => setShowGraceModal(false)}
+                className="px-4 py-2 bg-slate-800 text-gray-300 font-bold text-xs rounded hover:bg-slate-700"
+              >
+                BATAL
+              </button>
+            </div>
           </div>
         </div>
       )}
