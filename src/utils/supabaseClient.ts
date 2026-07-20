@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { SystemData } from '../types/system';
-import { STORAGE_KEY } from './systemLogic';
+import { STORAGE_KEY, getTodayDateString } from './systemLogic';
 
 const SUPABASE_URL = 'https://orgeczsahiqqoadacxpb.supabase.co';
 const SUPABASE_ANON_KEY =
@@ -18,11 +18,21 @@ export async function fetchSupabaseData(): Promise<SystemData | null> {
       .eq('id', RECORD_ID)
       .single();
 
-    if (error || !data) {
+    if (error || !data || !data.data) {
       return null;
     }
 
-    return data.data as SystemData;
+    const fetched = data.data as SystemData;
+    const today = getTodayDateString();
+
+    if (!fetched.skillStats) {
+      fetched.skillStats = { gra: 30, wor: 30, hor: 30, les: 30, sch: 30, spr: 30 };
+    }
+    if (!fetched.lastFedAt) {
+      fetched.lastFedAt = { gra: today, wor: today, hor: today, les: today, sch: today, spr: today };
+    }
+
+    return fetched;
   } catch (err) {
     console.warn('Failed to fetch progress from Supabase cloud:', err);
     return null;
@@ -63,7 +73,15 @@ export function subscribeToCloudChanges(onUpdate: (newData: SystemData) => void)
       },
       (payload) => {
         if (payload.new && payload.new.data) {
-          onUpdate(payload.new.data as SystemData);
+          const newData = payload.new.data as SystemData;
+          const today = getTodayDateString();
+          if (!newData.skillStats) {
+            newData.skillStats = { gra: 30, wor: 30, hor: 30, les: 30, sch: 30, spr: 30 };
+          }
+          if (!newData.lastFedAt) {
+            newData.lastFedAt = { gra: today, wor: today, hor: today, les: today, sch: today, spr: today };
+          }
+          onUpdate(newData);
         }
       }
     )
