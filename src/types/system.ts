@@ -1,5 +1,18 @@
 export type QuestCategory = 'SPRACHE' | 'KÖRPER' | 'CONTENT' | 'DISCIPLINE' | 'REVISION' | 'EXAM' | 'OTHER';
 
+export interface SkillStats {
+  gra: number;
+  wor: number;
+  hor: number;
+  les: number;
+  sch: number;
+  spr: number;
+}
+
+export type StatKey = keyof SkillStats;
+
+export type StatImpact = Partial<Record<StatKey, number>>;
+
 export interface LearningPhase {
   id: number;
   name: string;
@@ -18,6 +31,26 @@ export interface QuestTemplate {
   activePhase?: number;
   xpValue: number;
   isMandatory: boolean;
+  statImpact?: StatImpact;
+}
+
+export interface RankRequirement {
+  rankCode: 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
+  rankOrder: number;
+  chapterReq: string;
+  minStatValue: number;
+  unlocksDescription: string;
+}
+
+export interface BossFightExam {
+  id: string;
+  name: string;
+  unlockRank: 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
+  xpReward: number;
+  dateAttempted?: string;
+  scoreAchieved?: number;
+  sectionScores?: StatImpact;
+  statBonusAwarded?: boolean;
 }
 
 export interface QuestLogItem {
@@ -62,6 +95,7 @@ export interface Quest {
   subPhoneOutside?: boolean;
   userNote?: string;
   ktScore?: number;
+  statImpact?: StatImpact;
 }
 
 export interface InstantDungeonTask {
@@ -111,6 +145,8 @@ export interface SystemData {
   currentPhase: LearningPhase;
   sleepDebuff: SleepDebuffState;
   streaks: SeparatedStreaks;
+  skillStats: SkillStats;
+  lastFedAt: Record<StatKey, string>;
   quests: Quest[];
   instantDungeonTasks: InstantDungeonTask[];
   dailyHistory: DailyHistoryEntry[];

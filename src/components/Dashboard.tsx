@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { SystemData, Quest } from '../types/system';
 import { HudPanel, DiamondDivider } from './HudPanel';
 import { getDaysRemaining } from '../utils/systemLogic';
-import { Flame, Check, Zap, Edit2, Trash2, Edit, ShieldAlert, Sparkles } from 'lucide-react';
+import { RadarChart } from './RadarChart';
+import { calculateDualGateRank, calculateLevelFromXP } from '../utils/statLogic';
+import { Flame, Check, Zap, Edit2, Trash2, Edit, ShieldAlert, Sparkles, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface DashboardProps {
@@ -44,8 +46,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [bossDateInput, setBossDateInput] = useState(data.bossFight.targetDate);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const xpPercentage = Math.min(100, Math.max(0, (data.currentXP / nextLevelXP) * 100));
+  const levelInfo = calculateLevelFromXP(data.currentXP || 0);
+  const xpPercentage = Math.min(100, Math.max(0, (levelInfo.currentXP / 500) * 100));
   const daysRemaining = getDaysRemaining(data.bossFight.targetDate);
+
+  const defaultStats = data.skillStats || { gra: 30, wor: 30, hor: 30, les: 30, sch: 30, spr: 30 };
+  const rankEval = calculateDualGateRank(defaultStats, 4);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -138,6 +144,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </span>
       </div>
 
+      {rankEval.isCurriculumReadyButStatBlocked && (
+        <div className="p-3 rounded border border-yellow-500 bg-yellow-950/70 font-hud text-xs flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(255,193,7,0.4)]">
+          <AlertTriangle className="w-6 h-6 text-yellow-400 shrink-0" />
+          <div>
+            <h4 className="font-bold text-yellow-200 uppercase tracking-wider">SKILL BOTTLENECK DETECTED!</h4>
+            <p className="text-[11px] text-yellow-300 leading-tight mt-0.5">
+              {rankEval.message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {data.sleepDebuff?.active && (
         <div className="p-3 rounded border border-red-500 bg-red-950/70 font-hud text-xs flex items-center gap-3 animate-pulse shadow-[0_0_20px_rgba(255,82,82,0.5)]">
           <ShieldAlert className="w-6 h-6 text-red-400 shrink-0" />
@@ -154,13 +172,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-start justify-between">
           <div>
             <h2 className="font-hud tracking-widest text-[#4FC3F7] text-lg sm:text-xl font-bold uppercase">
-              STATUS
+              STATUS & RADAR STATS
             </h2>
             <div className="font-hud text-gray-300 text-xs sm:text-sm font-semibold tracking-wider mt-1">
               {data.playerName}
             </div>
             <div className="font-hud text-3xl sm:text-4xl font-extrabold glow-text-cyan mt-0.5 tracking-wide">
-              LV. {data.level}
+              LV. {levelInfo.level}
             </div>
           </div>
 
@@ -178,7 +196,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </svg>
               <div className="relative z-10 text-center font-hud">
                 <div className="text-sm sm:text-base font-extrabold text-[#E0F7FA] tracking-wider leading-none">
-                  {data.rank.includes('-') ? `${data.rank.split('-')[0]}-` : data.rank}
+                  {rankEval.rankCode}-RANK
                 </div>
                 <div className="text-[9px] sm:text-[10px] tracking-widest text-[#4FC3F7] uppercase mt-0.5 font-bold">
                   RANK
@@ -188,19 +206,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="mt-4 space-y-1.5">
-          <div className="text-right font-hud text-xs sm:text-sm text-gray-300 tracking-wider">
-            <span className="font-bold text-[#E0F7FA]">{data.currentXP.toLocaleString()}</span> / {nextLevelXP.toLocaleString()} XP
+        <RadarChart stats={defaultStats} targetThreshold={rankEval.requiredValue || 40} size={240} />
+
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center justify-between font-hud text-xs text-gray-300">
+            <span>DISCIPLINE STREAK METER</span>
+            <span className="font-bold text-[#E0F7FA]">
+              {levelInfo.currentXP} / 500 XP
+            </span>
           </div>
-          <div className="relative w-full h-3.5 bg-black/60 rounded-sm overflow-hidden border border-[#4FC3F7]/30 p-[1px]">
+          <div className="relative w-full h-3 bg-black/60 rounded-sm overflow-hidden border border-[#4FC3F7]/30 p-[1px]">
             <div
               className="relative h-full bg-gradient-to-r from-cyan-600 via-[#4FC3F7] to-[#00E5FF] transition-all duration-500 ease-out rounded-sm shadow-[0_0_12px_#00E5FF] overflow-hidden"
               style={{ width: `${xpPercentage}%` }}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-sweep pointer-events-none" />
-              {xpPercentage > 2 && (
-                <div className="absolute right-0 top-0 bottom-0 w-2 bg-white shadow-[0_0_10px_#FFFFFF]" />
-              )}
             </div>
           </div>
         </div>
@@ -269,13 +289,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       >
                         {quest.category}
                       </span>
-                      {quest.isMandatory ? (
-                        <span className="text-[9px] font-hud text-red-400 font-bold uppercase">
-                          (Wajib)
+                      {quest.id.includes('morgenroutine') && (
+                        <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
+                          SCH +2, GRA +1
                         </span>
-                      ) : (
-                        <span className="text-[9px] font-hud text-yellow-300 font-bold uppercase">
-                          (Bonus)
+                      )}
+                      {quest.id.includes('commute') && (
+                        <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
+                          HOR +2
+                        </span>
+                      )}
+                      {quest.id.includes('aktives-lernen') && (
+                        <span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800">
+                          WOR +2, GRA +1
                         </span>
                       )}
                     </div>
@@ -516,7 +542,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 type="submit"
                 className="w-full py-1.5 bg-[#4FC3F7] text-slate-950 font-bold text-xs rounded hover:bg-[#00E5FF]"
               >
-                LOG & CLAIM XP
+                LOG & CLAIM XP (+2 HOR)
               </button>
             </form>
           </div>
@@ -546,7 +572,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   type="submit"
                   className="flex-1 py-1.5 bg-[#4FC3F7] text-slate-950 font-bold text-xs rounded hover:bg-[#00E5FF]"
                 >
-                  SIMPAN & CLAIM XP
+                  SIMPAN (+2 SCH, +1 GRA)
                 </button>
               </div>
             </form>
